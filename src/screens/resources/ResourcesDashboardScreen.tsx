@@ -1,15 +1,17 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, FlatList } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl, FlatList, TouchableOpacity } from 'react-native';
 import { Text, Title, Button, IconButton, FAB, Surface } from 'react-native-paper';
 import { useResourcesStore } from '../../store/useResourcesStore';
 import { useFieldsStore } from '../../store/useFieldsStore';
 import { ResourceCard } from '../../components/resources/ResourceCard';
 import { AddTransactionModal } from '../../components/resources/AddTransactionModal';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useLanguageStore } from '../../store/useLanguageStore';
 
 export const ResourcesDashboardScreen = ({ navigation }: any) => {
   const { allSummary, loading, fetchAllSummary, fetchResourceTypes, resourceTypes, subscribeToChanges } = useResourcesStore();
   const { fields, fetchFields } = useFieldsStore();
+  const { t } = useLanguageStore();
   const [modalVisible, setModalVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -35,14 +37,14 @@ export const ResourcesDashboardScreen = ({ navigation }: any) => {
       if (!groups[item.field_id]) {
         groups[item.field_id] = {
           id: item.field_id,
-          name: item.field?.name || 'Unknown Field',
+          name: item.field?.name || t('unknown_field'),
           resources: []
         };
       }
       groups[item.field_id].resources.push(item);
     });
     return Object.values(groups);
-  }, [allSummary]);
+  }, [allSummary, t]);
 
   // Global total per resource type
   const typeSummary = useMemo(() => {
@@ -69,49 +71,44 @@ export const ResourcesDashboardScreen = ({ navigation }: any) => {
 
   return (
     <View style={styles.container}>
+
       <ScrollView 
         style={styles.scroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <Title style={styles.title}>Resources</Title>
-          <Button 
-            mode="text" 
-            icon="cog-outline" 
-            onPress={() => navigation.navigate('ResourceTypes')}
-          >
-            Types
-          </Button>
-        </View>
-
         {lowStockCount > 0 && (
-          <Surface style={styles.alertBanner} elevation={2}>
-            <MaterialCommunityIcons name="alert-circle" size={24} color="#F44336" />
+          <Surface style={styles.alertCard} elevation={0}>
+            <MaterialCommunityIcons name="alert-circle-outline" size={20} color="#000" />
             <Text style={styles.alertText}>
-              {lowStockCount} resource{lowStockCount > 1 ? 's are' : ' is'} low on stock
+              {t('attention_low_stock').replace('{count}', String(lowStockCount))}
             </Text>
           </Surface>
         )}
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.summaryScroll}>
-          {typeSummary.map((type, idx) => (
-            <Surface key={idx} style={styles.summaryCard} elevation={1}>
-              <MaterialCommunityIcons name={type.icon as any} size={24} color={type.color} />
-              <Text style={styles.summaryTotal}>{type.total.toFixed(0)} {type.unit}</Text>
-              <Text style={styles.summaryName}>{type.name} total</Text>
-              <Text style={styles.summarySub}>{type.fieldCount} fields</Text>
-            </Surface>
-          ))}
-        </ScrollView>
+        <View style={styles.summaryContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.summaryScroll} contentContainerStyle={styles.summaryScrollContent}>
+            {typeSummary.map((type, idx) => (
+              <Surface key={idx} style={styles.summaryCard} elevation={0}>
+                <View style={styles.summaryIconBox}>
+                  <MaterialCommunityIcons name={type.icon as any} size={20} color="#000" />
+                </View>
+                <Text style={styles.summaryTotal}>{(type.total || 0).toFixed(0)} {type.unit}</Text>
+                <Text style={styles.summaryName}>{type.name}</Text>
+                <Text style={styles.summarySub}>{type.fieldCount} {t('fields_count').split(' ')[1]}</Text>
+              </Surface>
+            ))}
+          </ScrollView>
+        </View>
 
         <View style={styles.content}>
-          <Text style={styles.sectionTitle}>Inventory by Field</Text>
+          <Text style={styles.sectionTitle}>{t('allocation_by_field')}</Text>
           
           {fieldGroups.length === 0 && !loading && (
             <View style={styles.emptyState}>
-              <MaterialCommunityIcons name="warehouse" size={48} color="#CCC" />
-              <Text style={styles.emptyText}>No resource data found.</Text>
-              <Button onPress={() => setModalVisible(true)}>Add your first transaction</Button>
+              <MaterialCommunityIcons name="warehouse" size={48} color="#EEE" />
+              <Text style={styles.emptyTitle}>{t('inventory_empty')}</Text>
+              <Text style={styles.emptySubtitle}>{t('inventory_empty_sub')}</Text>
             </View>
           )}
 
@@ -119,11 +116,11 @@ export const ResourcesDashboardScreen = ({ navigation }: any) => {
             <View key={group.id} style={styles.fieldSection}>
               <View style={styles.fieldHeader}>
                 <Text style={styles.fieldName}>{group.name}</Text>
-                <IconButton 
-                  icon="chevron-right" 
-                  size={20} 
-                  onPress={() => navigation.navigate('ResourcesField', { fieldId: group.id })} 
-                />
+                <TouchableOpacity 
+                  onPress={() => navigation.navigate('ResourcesField', { fieldId: group.id })}
+                >
+                  <Text style={styles.viewAllText}>{t('view_all_caps')}</Text>
+                </TouchableOpacity>
               </View>
               {group.resources.map((res: any) => (
                 <ResourceCard 
@@ -141,14 +138,16 @@ export const ResourcesDashboardScreen = ({ navigation }: any) => {
             </View>
           ))}
         </View>
-        <View style={{ height: 100 }} />
+        <View style={{ height: 120 }} />
       </ScrollView>
 
       <FAB
         icon="plus"
-        label="Record Transaction"
+        label={t('record_transaction')}
         style={styles.fab}
         onPress={() => setModalVisible(true)}
+        color="#FFF"
+        labelStyle={styles.fabLabel}
       />
 
       <AddTransactionModal 
@@ -162,97 +161,137 @@ export const ResourcesDashboardScreen = ({ navigation }: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F8FA',
+    backgroundColor: '#FFF',
   },
   scroll: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: 'white',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-  },
-  alertBanner: {
+  alertCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFEBEE',
+    backgroundColor: '#000',
     padding: 12,
-    marginHorizontal: 20,
-    marginTop: 10,
-    borderRadius: 8,
+    marginHorizontal: 24,
+    marginTop: 16,
+    borderRadius: 16,
   },
   alertText: {
-    color: '#D32F2F',
-    fontWeight: 'bold',
-    marginLeft: 10,
+    color: '#FFF',
+    fontWeight: '800',
+    fontSize: 12,
+    marginLeft: 12,
+    letterSpacing: 0.2,
+  },
+  summaryContainer: {
+    marginTop: 20,
   },
   summaryScroll: {
-    paddingHorizontal: 15,
-    paddingVertical: 15,
+    paddingLeft: 24,
+  },
+  summaryScrollContent: {
+    paddingRight: 24,
+    paddingBottom: 10,
   },
   summaryCard: {
-    width: 130,
+    width: 120,
     padding: 16,
-    borderRadius: 12,
-    marginHorizontal: 5,
-    backgroundColor: 'white',
+    borderRadius: 20,
+    marginRight: 12,
+    backgroundColor: '#FAFAFA',
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+  },
+  summaryIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
   },
   summaryTotal: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginTop: 8,
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#000',
+    letterSpacing: -0.5,
   },
   summaryName: {
     fontSize: 12,
     color: '#666',
+    fontWeight: '700',
+    marginTop: 2,
   },
   summarySub: {
     fontSize: 10,
-    color: '#999',
-    marginTop: 2,
+    color: '#AAA',
+    fontWeight: '800',
+    marginTop: 8,
+    letterSpacing: 1,
   },
   content: {
-    padding: 20,
+    paddingHorizontal: 24,
+    paddingTop: 32,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 15,
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#999',
+    marginBottom: 20,
+    letterSpacing: 1.5,
   },
   fieldSection: {
-    marginBottom: 24,
+    marginBottom: 40,
   },
   fieldHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+    alignItems: 'flex-end',
+    marginBottom: 16,
+    paddingHorizontal: 4,
   },
   fieldName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#000',
+    letterSpacing: -0.5,
+  },
+  viewAllText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#888',
+    letterSpacing: 1,
+    marginBottom: 4,
   },
   emptyState: {
     alignItems: 'center',
-    padding: 40,
+    paddingTop: 60,
   },
-  emptyText: {
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#000',
+    marginTop: 16,
+  },
+  emptySubtitle: {
+    fontSize: 14,
     color: '#999',
-    marginTop: 10,
-    marginBottom: 20,
+    marginTop: 4,
   },
   fab: {
     position: 'absolute',
-    margin: 16,
+    margin: 24,
     right: 0,
     bottom: 0,
     backgroundColor: '#000',
+    borderRadius: 16,
+    elevation: 8,
+  },
+  fabLabel: {
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1,
   },
 });

@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
 import { Text, Title, IconButton, FAB, Button, List } from 'react-native-paper';
 import { useResourcesStore } from '../../store/useResourcesStore';
 import { useFieldsStore } from '../../store/useFieldsStore';
 import { ResourceCard } from '../../components/resources/ResourceCard';
 import { AddTransactionModal } from '../../components/resources/AddTransactionModal';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useLanguageStore } from '../../store/useLanguageStore';
 
 export const ResourcesFieldScreen = ({ route, navigation }: any) => {
   const { fieldId } = route.params;
   const { fieldResources, fetchFieldResources, resourceTypes, fetchResourceTypes } = useResourcesStore();
   const { fields } = useFieldsStore();
+  const { t } = useLanguageStore();
   
   const [modalVisible, setModalVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -37,26 +39,30 @@ export const ResourcesFieldScreen = ({ route, navigation }: any) => {
 
   return (
     <View style={styles.container}>
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.title}>{field?.name || t('field_resources')}</Text>
+          <Text style={styles.subtitle}>{field?.area_hectares || 0} {t('hectares_of_cotton')}</Text>
+        </View>
+        <IconButton 
+          icon="dots-vertical" 
+          onPress={() => {}} 
+          iconColor="#000"
+        />
+      </View>
+
       <ScrollView 
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         style={styles.scroll}
+        showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <View>
-            <Title style={styles.title}>{field?.name || 'Field Resources'}</Title>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{field?.area_hectares || 0} HA</Text>
-            </View>
-          </View>
-          <IconButton icon="dots-vertical" onPress={() => {}} />
-        </View>
-
         <View style={styles.content}>
+          <Text style={styles.sectionTitle}>{t('field_inventory').toUpperCase()}</Text>
           {resources.length === 0 && (
             <View style={styles.emptyState}>
               <MaterialCommunityIcons name="filter-variant-plus" size={48} color="#CCC" />
-              <Text style={styles.emptyText}>No resources added to this field yet.</Text>
-              <Button mode="contained" onPress={() => handleAddPress()}>Add Transaction</Button>
+              <Text style={styles.emptyText}>{t('no_resources_field')}</Text>
+              <Button mode="contained" onPress={() => handleAddPress()}>{t('record_transaction')}</Button>
             </View>
           )}
 
@@ -79,9 +85,11 @@ export const ResourcesFieldScreen = ({ route, navigation }: any) => {
 
       <FAB
         icon="plus"
-        label="New Action"
+        label={t('record_action')}
         style={styles.fab}
         onPress={() => handleAddPress()}
+        color="#FFF"
+        labelStyle={styles.fabLabel}
       />
 
       <AddTransactionModal 
@@ -100,7 +108,7 @@ export const ResourcesFieldScreen = ({ route, navigation }: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F8FA',
+    backgroundColor: '#FFF',
   },
   scroll: {
     flex: 1,
@@ -108,45 +116,65 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: 20,
-    backgroundColor: 'white',
     alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 16,
+    backgroundColor: 'white',
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 28,
+    fontWeight: '900',
+    color: '#000',
+    letterSpacing: -1,
   },
-  badge: {
-    backgroundColor: '#E8F5E9',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-    alignSelf: 'flex-start',
-    marginTop: 4,
-  },
-  badgeText: {
-    color: '#2E7D32',
-    fontSize: 10,
-    fontWeight: 'bold',
+  subtitle: {
+    fontSize: 12,
+    color: '#999',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   content: {
-    padding: 16,
+    paddingHorizontal: 24,
+    paddingTop: 32,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#999',
+    marginBottom: 20,
+    letterSpacing: 1.5,
   },
   emptyState: {
     alignItems: 'center',
-    padding: 60,
+    paddingTop: 60,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#000',
+    marginTop: 16,
   },
   emptyText: {
+    fontSize: 14,
     color: '#999',
+    marginTop: 4,
     textAlign: 'center',
-    marginBottom: 20,
-    marginTop: 10,
+    marginBottom: 24,
   },
   fab: {
     position: 'absolute',
-    margin: 16,
+    margin: 24,
     right: 0,
     bottom: 0,
     backgroundColor: '#000',
+    borderRadius: 16,
+    elevation: 8,
+  },
+  fabLabel: {
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1,
   },
 });

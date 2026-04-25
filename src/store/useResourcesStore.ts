@@ -30,11 +30,49 @@ export const useResourcesStore = create<ResourcesState>((set, get) => ({
     set({ loading: true });
     try {
       const types = await resourcesRepository.getResourceTypes();
-      set({ resourceTypes: types });
+      // Deduplicate by name for clean UI
+      const uniqueTypes = types.filter((v, i, a) => a.findIndex(t => t.name === v.name) === i);
+      set({ resourceTypes: uniqueTypes });
     } catch (error) {
       console.error('Error fetching resource types:', error);
     } finally {
       set({ loading: false });
+    }
+  },
+
+  addResourceType: async (type: { name: string, unit: string, icon: string, low_stock_threshold: number }) => {
+    try {
+      const newType = await resourcesRepository.createResourceType(type);
+      set(state => ({ resourceTypes: [...state.resourceTypes, newType] }));
+      return newType;
+    } catch (error) {
+      console.error('Error adding resource type:', error);
+      throw error;
+    }
+  },
+
+  updateResourceType: async (id: string, updates: any) => {
+    try {
+      const updated = await resourcesRepository.updateResourceType(id, updates);
+      set(state => ({
+        resourceTypes: state.resourceTypes.map(t => t.id === id ? updated : t)
+      }));
+      return updated;
+    } catch (error) {
+      console.error('Error updating resource type:', error);
+      throw error;
+    }
+  },
+
+  deleteResourceType: async (id: string) => {
+    try {
+      await resourcesRepository.deleteResourceType(id);
+      set(state => ({
+        resourceTypes: state.resourceTypes.filter(t => t.id !== id)
+      }));
+    } catch (error) {
+      console.error('Error deleting resource type:', error);
+      throw error;
     }
   },
 

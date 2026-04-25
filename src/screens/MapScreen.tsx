@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { StyleSheet, View, Dimensions, Text as NativeText } from 'react-native';
+import { StyleSheet, View, Dimensions, Text as NativeText, ScrollView, SafeAreaView } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import MapView, { Marker, Polygon, PROVIDER_GOOGLE, MapType } from 'react-native-maps';
-import { IconButton, FAB, Portal, Modal, Title, Button, TextInput, SegmentedButtons, RadioButton, Text } from 'react-native-paper';
+import { IconButton, FAB, Portal, Modal, Title, Button, TextInput, SegmentedButtons, RadioButton, Text, Chip } from 'react-native-paper';
 import { useLocation } from '../hooks/useLocation';
 import { useFieldsStore } from '../store/useFieldsStore';
 import { useRealtime } from '../hooks/useRealtime';
@@ -18,9 +19,9 @@ import { ActionBar } from '../components/FieldEditor/ActionBar';
 import { FieldLabelMarker } from '../components/FieldLabelMarker';
 import { fieldsRepository } from '../database/fieldsRepository';
 import { computeCentroid } from '../utils/geoCalculations';
-import { ScrollView } from 'react-native';
 import { useLanguageStore } from '../store/useLanguageStore';
 import { Field } from '../types';
+import { FieldSearch } from '../components/FieldSearch';
 
 export const MapScreen = ({ navigation, route }: any) => {
 
@@ -83,30 +84,38 @@ export const MapScreen = ({ navigation, route }: any) => {
     }
   }, [!!location, isEditorActive, fields.length]);
 
+  const focusOnField = useCallback((field: Field) => {
+    if (!mapRef.current) return;
+    
+    const centroid = (field.centroid_lat && field.centroid_lng)
+      ? { latitude: Number(field.centroid_lat), longitude: Number(field.centroid_lng) }
+      : (field.polygon_json.length >= 3 ? computeCentroid(field.polygon_json) : null);
+
+    if (centroid) {
+      mapRef.current.animateToRegion({
+        ...centroid,
+        latitudeDelta: 0.005,
+        longitudeDelta: 0.005,
+      }, 1000);
+      
+      setSelectedField(field);
+      setInfoModalVisible(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+  }, []);
+
   // Handle focusing on a specific field from navigation params
   useEffect(() => {
     const focusFieldId = route.params?.focusFieldId;
-    if (focusFieldId && fields.length > 0 && mapRef.current) {
+    if (focusFieldId && fields.length > 0) {
        const fieldToFocus = fields.find(f => f.id === focusFieldId);
        if (fieldToFocus) {
-          const centroid = (fieldToFocus.centroid_lat && fieldToFocus.centroid_lng)
-            ? { latitude: Number(fieldToFocus.centroid_lat), longitude: Number(fieldToFocus.centroid_lng) }
-            : computeCentroid(fieldToFocus.polygon_json);
-
-          mapRef.current.animateToRegion({
-             ...centroid,
-             latitudeDelta: 0.005,
-             longitudeDelta: 0.005,
-          }, 1000);
-          
-          setSelectedField(fieldToFocus);
-          setInfoModalVisible(true);
-          
+          focusOnField(fieldToFocus);
           // Clear params to avoid refocusing on every render
           navigation.setParams({ focusFieldId: undefined });
        }
     }
-  }, [route.params?.focusFieldId, fields.length]);
+  }, [route.params?.focusFieldId, fields.length, focusOnField]);
 
   const handleCenterOnGPS = () => {
     if (location && mapRef.current) {
@@ -198,7 +207,7 @@ export const MapScreen = ({ navigation, route }: any) => {
 
   const handleSaveAttempt = () => {
     if (editor.vertices.length < 3) {
-      alert('A field must have at least 3 points.');
+      alert(t('field_points_req'));
       return;
     }
     setSaveModalVisible(true);
@@ -219,6 +228,7 @@ export const MapScreen = ({ navigation, route }: any) => {
         color: fieldType === 'sector' ? Colors.field.sector : Colors.field.block,
         centroid_lat: centroid.latitude,
         centroid_lng: centroid.longitude,
+        season: new Date().getFullYear().toString(),
       });
       setSaveModalVisible(false);
       setIsEditorActive(false);
@@ -228,7 +238,7 @@ export const MapScreen = ({ navigation, route }: any) => {
       editor.clearAll();
     } catch (err) {
       console.error(err);
-      alert('Error saving field');
+      alert(t('error_saving_field') || 'Error saving field');
     }
     setSaving(false);
   };
@@ -240,6 +250,49 @@ export const MapScreen = ({ navigation, route }: any) => {
 
   return (
     <View style={styles.container}>
+      <StatusBar style="light" />
+      {!isEditorActive && (
+        <SafeAreaView style={styles.searchContainer}>
+          <FieldSearch 
+            fields={fields} 
+            onFieldSelect={focusOnField}
+          />
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            contentContainerStyle={styles.chipsContainer}
+          >
+            <Chip 
+              selected={viewMode === 'all'} 
+              onPress={() => setViewMode('all')}
+              style={styles.chip}
+              mode="outlined"
+              showSelectedOverlay
+              icon="view-module"
+            >
+              {t('view_all') || "All"}
+            </Chip>
+            <Chip 
+              selected={viewMode === 'sectors'} 
+              onPress={() => setViewMode('sectors')}
+              style={styles.chip}
+              mode="outlined"
+              showSelectedOverlay
+              icon="office-building"
+            >
+              {t('sector') || "Sectors"}
+            </Chip>
+            <Chip 
+              onPress={() => toggleLabels()}
+              style={styles.chip}
+              mode="outlined"
+              icon={showLabels ? "label" : "label-off-outline"}
+            >
+              {t('label') || "Labels"}
+            </Chip>
+          </ScrollView>
+        </SafeAreaView>
+      )}
       <MapView
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
@@ -313,7 +366,7 @@ export const MapScreen = ({ navigation, route }: any) => {
         {/* Real-time Draft Label for active editor */}
         {isEditorActive && editor.vertices.length >= 3 && (
           <FieldLabelMarker
-            label="New Field (Draft)"
+            label={t('new_field_draft')}
             areaHectares={editor.area}
             centroid={computeCentroid(editor.vertices)}
             color={Colors.primary}
@@ -367,37 +420,15 @@ export const MapScreen = ({ navigation, route }: any) => {
         })}
       </MapView>
 
-      {/* Common Controls */}
-      <View style={styles.controlsLeft}>
-        <IconButton
-          icon={viewMode === 'all' ? "view-module" : "office-building"}
-          mode="contained"
-          onPress={toggleViewMode}
-          containerColor={viewMode === 'sectors' ? '#000' : '#FFF'}
-          iconColor={viewMode === 'sectors' ? '#FFF' : '#000'}
-        />
+      {/* Right Sidebar Controls */}
+      <View style={styles.controlsRight}>
         <IconButton
           icon="layers-outline"
           mode="contained"
           onPress={toggleMapType}
           containerColor="#FFF"
           iconColor={Colors.primary}
-        />
-        <IconButton
-          icon={showLabels ? "label" : "label-off-outline"}
-          mode="contained"
-          onPress={toggleLabels}
-          containerColor="#FFF"
-          iconColor={Colors.primary}
-        />
-
-        <IconButton
-          icon="crosshairs-gps"
-
-          mode="contained"
-          onPress={handleCenterOnGPS}
-          containerColor="#FFF"
-          iconColor={Colors.primary}
+          style={styles.sideButton}
         />
         <IconButton
           icon="compass-outline"
@@ -405,8 +436,24 @@ export const MapScreen = ({ navigation, route }: any) => {
           onPress={() => mapRef.current?.animateCamera({ heading: 0 })}
           containerColor="#FFF"
           iconColor={Colors.primary}
+          style={styles.sideButton}
         />
       </View>
+
+      {/* Bottom Right Controls (Stacked above FAB) */}
+      {!isEditorActive && (
+        <View style={styles.bottomRightGroup}>
+          <IconButton
+            icon="crosshairs-gps"
+            mode="contained"
+            onPress={handleCenterOnGPS}
+            containerColor="#FFF"
+            iconColor={Colors.primary}
+            size={24}
+            style={styles.gpsButton}
+          />
+        </View>
+      )}
 
       {/* Editor specific overlays */}
       {isEditorActive ? (
@@ -567,7 +614,7 @@ export const MapScreen = ({ navigation, route }: any) => {
                 style={styles.detailsBtn}
                 icon="arrow-right"
               >
-                {t('view_details') || 'View Details'}
+                {t('view_details')}
               </Button>
 
               <Button 
@@ -593,10 +640,50 @@ const styles = StyleSheet.create({
   map: {
     ...StyleSheet.absoluteFillObject,
   },
-  controlsLeft: {
+  searchContainer: {
     position: 'absolute',
-    top: 100,
-    right: 16,
+    top: 45,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+  },
+  chipsContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  chip: {
+    backgroundColor: '#FFF',
+    elevation: 2,
+    height: 34,
+    borderRadius: 17,
+  },
+  controlsRight: {
+    position: 'absolute',
+    top: 180,
+    right: 12,
+  },
+  bottomRightGroup: {
+    position: 'absolute',
+    bottom: 90,
+    right: 12,
+    alignItems: 'center',
+  },
+  sideButton: {
+    marginVertical: 4,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    borderRadius: 12,
+  },
+  gpsButton: {
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    borderRadius: 25,
+    backgroundColor: '#FFF',
   },
   bottomContainer: {
     position: 'absolute',

@@ -6,10 +6,12 @@ import { TransactionRow } from '../../components/resources/TransactionRow';
 import { AddTransactionModal } from '../../components/resources/AddTransactionModal';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { format } from 'date-fns';
+import { useLanguageStore } from '../../store/useLanguageStore';
 
 export const ResourceDetailScreen = ({ route, navigation }: any) => {
   const { fieldId, resourceTypeId, fieldName, resourceName } = route.params;
   const { transactions, fetchTransactions, fieldResources, deleteTransaction } = useResourcesStore();
+  const { t } = useLanguageStore();
   
   const [modalVisible, setModalVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -29,8 +31,8 @@ export const ResourceDetailScreen = ({ route, navigation }: any) => {
 
   const handleDeleteTx = (txId: string) => {
     Alert.alert(
-      'Delete Transaction',
-      'Are you sure you want to delete this transaction? Balance will be recalculated.',
+      t('delete_tx_title'),
+      t('delete_tx_msg'),
       [
         { text: 'Cancel', style: 'cancel' },
         { 
@@ -71,20 +73,20 @@ export const ResourceDetailScreen = ({ route, navigation }: any) => {
 
       <View style={styles.statsRow}>
         <View style={styles.statBox}>
-          <Text style={styles.statLabel}>Total In</Text>
+          <Text style={styles.statLabel}>{t('total_in')}</Text>
           <Text style={[styles.statValue, { color: '#4CAF50' }]}>{totalIn.toFixed(0)}</Text>
         </View>
         <View style={styles.statBox}>
-          <Text style={styles.statLabel}>Total Out</Text>
+          <Text style={styles.statLabel}>{t('total_out')}</Text>
           <Text style={[styles.statValue, { color: '#F44336' }]}>{totalOut.toFixed(0)}</Text>
         </View>
         <View style={styles.statBox}>
-          <Text style={styles.statLabel}>Entries</Text>
+          <Text style={styles.statLabel}>{t('entries')}</Text>
           <Text style={styles.statValue}>{txList.length}</Text>
         </View>
       </View>
 
-      <Text style={styles.historyTitle}>Transaction History</Text>
+      <Text style={styles.historyTitle}>{t('tx_history')}</Text>
     </View>
   );
 
@@ -114,7 +116,7 @@ export const ResourceDetailScreen = ({ route, navigation }: any) => {
 
       <FAB
         icon="plus"
-        label="Record"
+        label={t('record_short')}
         style={styles.fab}
         onPress={() => setModalVisible(true)}
       />

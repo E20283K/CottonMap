@@ -2,6 +2,7 @@ import 'react-native-url-polyfill/auto';
 import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { Provider as PaperProvider, MD3LightTheme } from 'react-native-paper';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { supabase } from './src/lib/supabase';
 import { useAuthStore } from './src/store/useAuthStore';
 import { AuthNavigator } from './src/navigation/AuthNavigator';
@@ -45,11 +46,13 @@ export default function App() {
   }
 
   return (
-    <PaperProvider theme={theme}>
-      <NavigationContainer>
-        <StatusBar style="auto" />
-        {session ? <AppNavigator /> : <AuthNavigator />}
-      </NavigationContainer>
-    </PaperProvider>
+    <SafeAreaProvider>
+      <PaperProvider theme={theme}>
+        <NavigationContainer>
+          <StatusBar style="auto" />
+          {session ? <AppNavigator /> : <AuthNavigator />}
+        </NavigationContainer>
+      </PaperProvider>
+    </SafeAreaProvider>
   );
 }

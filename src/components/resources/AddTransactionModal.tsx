@@ -1,14 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Platform } from 'react-native';
+import React, { useState, useEffect, useMemo } from 'react';
+import { View, StyleSheet, ScrollView, Platform, Alert } from 'react-native';
 import { Modal, Portal, Text, TextInput, Button, SegmentedButtons, IconButton, ActivityIndicator } from 'react-native-paper';
 import { useResourcesStore } from '../../store/useResourcesStore';
 import { useFieldsStore } from '../../store/useFieldsStore';
+import { useLanguageStore } from '../../store/useLanguageStore';
 import { NewTransaction } from '../../types/resources';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 // Conditional import for native picker
 let DateTimePicker: any;
 if (Platform.OS !== 'web') {
-  DateTimePicker = require('@react-native-community/datetimepicker').default;
+  try {
+    DateTimePicker = require('@react-native-community/datetimepicker').default;
+  } catch (e) {
+    console.warn('DateTimePicker not found');
+  }
 }
 
 interface Props {
@@ -25,9 +31,11 @@ export const AddTransactionModal: React.FC<Props> = ({
   initialResourceTypeId 
 }) => {
   const { resourceTypes, addTransaction } = useResourcesStore();
+  const { t } = useLanguageStore();
   const { fields } = useFieldsStore();
 
   const [type, setType] = useState<'incoming' | 'outgoing'>('incoming');
+  const [selectedSectorId, setSelectedSectorId] = useState<string | undefined>();
   const [fieldId, setFieldId] = useState(initialFieldId || '');
   const [resourceTypeId, setResourceTypeId] = useState(initialResourceTypeId || '');
   const [quantity, setQuantity] = useState('');
@@ -41,13 +49,21 @@ export const AddTransactionModal: React.FC<Props> = ({
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (initialFieldId) setFieldId(initialFieldId);
+    if (initialFieldId) {
+      setFieldId(initialFieldId);
+      const field = fields.find(f => f.id === initialFieldId);
+      if (field?.parent_id) {
+        setSelectedSectorId(field.parent_id);
+      } else if (field?.field_type === 'sector') {
+        setSelectedSectorId(field.id);
+      }
+    }
     if (initialResourceTypeId) setResourceTypeId(initialResourceTypeId);
-  }, [initialFieldId, initialResourceTypeId]);
+  }, [initialFieldId, initialResourceTypeId, fields]);
 
   const handleSave = async () => {
     if (!fieldId || !resourceTypeId || !quantity) {
-      alert('Please fill in all required fields');
+      alert(t('fill_required_fields') || 'Please fill in all required fields');
       return;
     }
 
@@ -74,57 +90,105 @@ export const AddTransactionModal: React.FC<Props> = ({
       setNotes('');
     } catch (err) {
       console.error(err);
-      alert('Error saving transaction');
+      alert(t('error_saving_transaction') || 'Error saving transaction');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const selectedResourceType = resourceTypes.find(t => t.id === resourceTypeId);
+  const sectors = useMemo(() => fields.filter(f => f.field_type === 'sector'), [fields]);
+  const blocks = useMemo(() => {
+    if (!selectedSectorId) return [];
+    return fields.filter(f => f.parent_id === selectedSectorId);
+  }, [fields, selectedSectorId]);
+
+  const uniqueResourceTypes = useMemo(() => {
+    const seen = new Set();
+    return resourceTypes.filter(t => {
+      const duplicate = seen.has(t.id);
+      seen.add(t.id);
+      return !duplicate;
+    });
+  }, [resourceTypes]);
+
+  const selectedResourceType = uniqueResourceTypes.find(t => t.id === resourceTypeId);
 
   return (
     <Portal>
       <Modal visible={visible} onDismiss={onDismiss} contentContainerStyle={styles.modal}>
         <View style={styles.header}>
-          <Text style={styles.title}>Record Transaction</Text>
-          <IconButton icon="close" onPress={onDismiss} />
+          <View>
+            <Text style={styles.title}>{t('record_event')}</Text>
+            <Text style={styles.subtitle}>{t('inventory_transaction')}</Text>
+          </View>
+          <IconButton icon="close" onPress={onDismiss} style={styles.closeBtn} />
         </View>
 
         <SegmentedButtons
           value={type}
           onValueChange={v => setType(v as any)}
           buttons={[
-            { value: 'incoming', label: 'Incoming ↓', checkedColor: '#4CAF50' },
-            { value: 'outgoing', label: 'Outgoing ↑', checkedColor: '#F44336' },
+            { value: 'incoming', label: t('stock_in'), checkedColor: '#000', labelStyle: styles.segLabel },
+            { value: 'outgoing', label: t('usage'), checkedColor: '#000', labelStyle: styles.segLabel },
           ]}
           style={styles.segmented}
+          density="medium"
         />
 
-        <ScrollView style={styles.scroll}>
-          <Text style={styles.label}>Select Field *</Text>
+        <ScrollView 
+          style={styles.scroll} 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.label}>{t('allocation_sector')}</Text>
           <View style={styles.chipRow}>
-            {fields.map(f => (
+            {sectors.map(s => (
               <Button 
-                key={f.id} 
-                mode={fieldId === f.id ? 'contained' : 'outlined'}
-                onPress={() => setFieldId(f.id)}
-                style={styles.chip}
+                key={s.id} 
+                mode={selectedSectorId === s.id ? 'contained' : 'outlined'}
+                onPress={() => {
+                  setSelectedSectorId(s.id);
+                  if (s.id !== selectedSectorId) setFieldId(''); // Reset block if sector changes
+                }}
+                style={[styles.chip, selectedSectorId === s.id ? styles.activeChip : styles.inactiveChip]}
+                labelStyle={styles.chipLabel}
                 compact
               >
-                {f.name}
+                {s.name}
               </Button>
             ))}
           </View>
 
-          <Text style={styles.label}>Resource Type *</Text>
+          {selectedSectorId && blocks.length > 0 && (
+            <>
+              <Text style={styles.label}>{t('allocation_block')}</Text>
+              <View style={styles.chipRow}>
+                {blocks.map(b => (
+                  <Button 
+                    key={b.id} 
+                    mode={fieldId === b.id ? 'contained' : 'outlined'}
+                    onPress={() => setFieldId(b.id)}
+                    style={[styles.chip, fieldId === b.id ? styles.activeChip : styles.inactiveChip]}
+                    labelStyle={styles.chipLabel}
+                    compact
+                  >
+                    {b.name}
+                  </Button>
+                ))}
+              </View>
+            </>
+          )}
+
+          <Text style={styles.label}>{t('resource').toUpperCase()}</Text>
           <View style={styles.chipRow}>
-            {resourceTypes.map(t => (
+            {uniqueResourceTypes.map(t => (
               <Button 
                 key={t.id} 
                 mode={resourceTypeId === t.id ? 'contained' : 'outlined'}
                 onPress={() => setResourceTypeId(t.id)}
                 icon={t.icon as any}
-                style={styles.chip}
+                style={[styles.chip, resourceTypeId === t.id ? styles.activeChip : styles.inactiveChip]}
+                labelStyle={styles.chipLabel}
                 compact
               >
                 {t.name}
@@ -134,17 +198,20 @@ export const AddTransactionModal: React.FC<Props> = ({
 
           <View style={styles.row}>
             <TextInput
-              label={`Quantity (${selectedResourceType?.unit || '...'}) *`}
+              label={`${t('quantity_short')} (${selectedResourceType?.unit || '...'})`}
               value={quantity}
               onChangeText={setQuantity}
               keyboardType="numeric"
               mode="outlined"
+              activeOutlineColor="#000"
+              outlineColor="#EEE"
               style={styles.flexInput}
             />
             <Button 
               onPress={() => setShowDatePicker(true)} 
               mode="outlined" 
               style={styles.dateBtn}
+              textColor="#000"
             >
               {format(date, 'MMM dd')}
             </Button>
@@ -165,48 +232,58 @@ export const AddTransactionModal: React.FC<Props> = ({
           {type === 'incoming' ? (
             <>
               <TextInput
-                label="Supplier Name"
+                label={t('supplier')}
                 value={supplier}
                 onChangeText={setSupplier}
                 mode="outlined"
+                activeOutlineColor="#000"
+                outlineColor="#EEE"
                 style={styles.input}
               />
               <TextInput
-                label="Unit Price (Optional)"
+                label={t('unit_price')}
                 value={unitPrice}
                 onChangeText={setUnitPrice}
                 keyboardType="numeric"
                 mode="outlined"
+                activeOutlineColor="#000"
+                outlineColor="#EEE"
                 style={styles.input}
               />
             </>
           ) : (
             <>
               <TextInput
-                label="Applied By (Worker)"
+                label={t('worker')}
                 value={appliedBy}
                 onChangeText={setAppliedBy}
                 mode="outlined"
+                activeOutlineColor="#000"
+                outlineColor="#EEE"
                 style={styles.input}
               />
               <TextInput
-                label="Reason / Purpose"
+                label={t('reason')}
                 value={reason}
                 onChangeText={setReason}
-                placeholder="e.g. 1st fertilization"
+                placeholder={t('reason')}
                 mode="outlined"
+                activeOutlineColor="#000"
+                outlineColor="#EEE"
                 style={styles.input}
               />
             </>
           )}
 
           <TextInput
-            label="Notes"
+            label={t('notes')}
             value={notes}
             onChangeText={setNotes}
             multiline
             numberOfLines={3}
             mode="outlined"
+            activeOutlineColor="#000"
+            outlineColor="#EEE"
             style={styles.input}
           />
 
@@ -215,9 +292,10 @@ export const AddTransactionModal: React.FC<Props> = ({
             onPress={handleSave} 
             loading={submitting}
             disabled={submitting}
-            style={[styles.saveBtn, { backgroundColor: type === 'incoming' ? '#4CAF50' : '#F44336' }]}
+            style={styles.saveBtn}
+            contentStyle={styles.saveBtnContent}
           >
-            {type === 'incoming' ? 'Save Incoming ↓' : 'Save Outgoing ↑'}
+            {type === 'incoming' ? t('save_transaction') : t('record_usage')}
           </Button>
         </ScrollView>
       </Modal>
@@ -233,41 +311,71 @@ const format = (d: Date, f: string) => {
 const styles = StyleSheet.create({
   modal: {
     backgroundColor: 'white',
-    padding: 20,
-    margin: 10,
-    borderRadius: 20,
+    padding: 24,
+    margin: 16,
+    borderRadius: 28,
     maxHeight: '90%',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  segmented: {
     marginBottom: 20,
   },
+  title: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#000',
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#999',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  closeBtn: {
+    backgroundColor: '#F5F5F5',
+    margin: 0,
+  },
+  segmented: {
+    marginBottom: 24,
+  },
+  segLabel: {
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
   scroll: {
-    marginBottom: 10,
+    marginBottom: 0,
   },
   label: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#666',
-    marginTop: 10,
-    marginBottom: 5,
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#888',
+    marginTop: 12,
+    marginBottom: 8,
+    letterSpacing: 1,
   },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: 10,
+    marginBottom: 16,
+    marginHorizontal: -4,
   },
   chip: {
     margin: 4,
+    borderRadius: 8,
+  },
+  activeChip: {
+    backgroundColor: '#000',
+  },
+  inactiveChip: {
+    borderColor: '#EEE',
+  },
+  chipLabel: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   row: {
     flexDirection: 'row',
@@ -276,17 +384,26 @@ const styles = StyleSheet.create({
   },
   flexInput: {
     flex: 1,
-    marginRight: 10,
+    marginRight: 12,
+    backgroundColor: '#FFF',
   },
   dateBtn: {
     height: 50,
     justifyContent: 'center',
+    borderRadius: 8,
+    borderColor: '#EEE',
   },
   input: {
     marginTop: 12,
+    backgroundColor: '#FFF',
   },
   saveBtn: {
-    marginTop: 24,
-    marginBottom: 10,
+    marginTop: 28,
+    marginBottom: 8,
+    backgroundColor: '#000',
+    borderRadius: 14,
+  },
+  saveBtnContent: {
+    height: 54,
   },
 });

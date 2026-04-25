@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { Button, IconButton } from 'react-native-paper';
 import { Colors } from '../../utils/colorPalette';
+import { useLanguageStore } from '../../store/useLanguageStore';
 
 interface Props {
   onSave: () => void;
@@ -13,6 +14,8 @@ interface Props {
 }
 
 export const ActionBar: React.FC<Props> = ({ onSave, onCancel, onUndo, onClear, canUndo, mode }) => {
+  const { t } = useLanguageStore();
+  
   return (
     <View style={styles.container}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scroll}>
@@ -23,7 +26,7 @@ export const ActionBar: React.FC<Props> = ({ onSave, onCancel, onUndo, onClear, 
           buttonColor={Colors.primary}
           icon="check"
         >
-          {mode === 'draw' ? 'Finish' : 'Save'}
+          {mode === 'draw' ? t('finish') : t('save')}
         </Button>
         
         <IconButton
@@ -41,7 +44,7 @@ export const ActionBar: React.FC<Props> = ({ onSave, onCancel, onUndo, onClear, 
           textColor={Colors.error}
           icon="delete-sweep"
         >
-          Clear
+          {t('clear')}
         </Button>
 
         <Button 
@@ -50,7 +53,7 @@ export const ActionBar: React.FC<Props> = ({ onSave, onCancel, onUndo, onClear, 
           style={styles.btn}
           textColor="#666"
         >
-          Cancel
+          {t('cancel')}
         </Button>
       </ScrollView>
     </View>

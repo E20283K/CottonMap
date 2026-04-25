@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
 import { ScrollView, StyleSheet, View, RefreshControl, TouchableOpacity } from 'react-native';
-import { ActivityIndicator, Title, Text, Searchbar, List, Surface, IconButton } from 'react-native-paper';
+import { ActivityIndicator, Title, Text, List, Surface, IconButton } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFieldsStore } from '../store/useFieldsStore';
 import { useLanguageStore } from '../store/useLanguageStore';
@@ -10,7 +10,6 @@ import { Colors } from '../utils/colorPalette';
 export const FieldsListScreen = ({ navigation }: any) => {
   const { fields, loading, fetchFields } = useFieldsStore();
   const { t } = useLanguageStore();
-  const [searchQuery, setSearchQuery] = React.useState('');
   const [expandedSectors, setExpandedSectors] = React.useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -22,8 +21,6 @@ export const FieldsListScreen = ({ navigation }: any) => {
   };
 
   const { sectors, standaloneBlocks } = useMemo(() => {
-    const search = searchQuery.toLowerCase();
-    
     // Group everything
     const allSectors = fields.filter(f => f.field_type === 'sector');
     const allBlocks = fields.filter(f => f.field_type === 'block');
@@ -31,18 +28,12 @@ export const FieldsListScreen = ({ navigation }: any) => {
     const groupedSectors = allSectors.map(sector => {
       const children = allBlocks.filter(b => b.parent_id === sector.id);
       return { ...sector, children };
-    }).filter(s => 
-       s.name.toLowerCase().includes(search) || 
-       s.children.some(c => c.name.toLowerCase().includes(search))
-    );
+    });
 
-    const soloBlocks = allBlocks.filter(b => 
-      !b.parent_id && 
-      b.name.toLowerCase().includes(search)
-    );
+    const soloBlocks = allBlocks.filter(b => !b.parent_id);
 
     return { sectors: groupedSectors, standaloneBlocks: soloBlocks };
-  }, [fields, searchQuery]);
+  }, [fields]);
 
   if (loading && fields.length === 0) {
     return (
@@ -54,13 +45,6 @@ export const FieldsListScreen = ({ navigation }: any) => {
 
   return (
     <View style={styles.container}>
-      <Searchbar
-        placeholder={t('search')}
-        onChangeText={setSearchQuery}
-        value={searchQuery}
-        style={styles.searchbar}
-      />
-      
       <ScrollView 
         contentContainerStyle={styles.listContent}
         refreshControl={
@@ -157,20 +141,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
-  },
-  searchbar: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 8,
-    backgroundColor: '#FFFFFF',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
   },
   listContent: {
     paddingBottom: 24,

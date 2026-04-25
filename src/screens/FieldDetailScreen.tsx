@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useLayoutEffect } from 'react';
-import { ScrollView, StyleSheet, View, TouchableOpacity } from 'react-native';
+import { ScrollView, StyleSheet, View, TouchableOpacity, Alert, Dimensions } from 'react-native';
 import { Title, Paragraph, Button, Divider, FAB, Portal, Modal, TextInput, RadioButton, Appbar, IconButton, Text } from 'react-native-paper';
 import { useFieldsStore } from '../store/useFieldsStore';
 import { useTasksStore } from '../store/useTasksStore';
@@ -11,8 +11,10 @@ import { formatHectares } from '../utils/geoCalculations';
 import { tasksRepository } from '../database/tasksRepository';
 import { fieldsRepository } from '../database/fieldsRepository';
 import { useLanguageStore } from '../store/useLanguageStore';
-import { Alert, Dimensions } from 'react-native';
 import MapView, { Polygon, PROVIDER_GOOGLE } from 'react-native-maps';
+import { AddTransactionModal } from '../components/resources/AddTransactionModal';
+import { FieldResource } from '../types/resources';
+import { AddTaskModal } from '../components/AddTaskModal';
 
 export const FieldDetailScreen = ({ route, navigation }: any) => {
   const { fieldId } = route.params;
@@ -26,9 +28,16 @@ export const FieldDetailScreen = ({ route, navigation }: any) => {
   const fieldResourcesData = fieldResources[fieldId] || [];
 
   const [modalVisible, setModalVisible] = useState(false);
-  const [taskTitle, setTaskTitle] = useState('');
-  const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
-  const [loading, setLoading] = useState(false);
+  const [txModalVisible, setTxModalVisible] = useState(false);
+  const [selectedResTypeId, setSelectedResTypeId] = useState<string | undefined>();
+  
+  // Edit Field State
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editVariety, setEditVariety] = useState('');
+  const [editSeason, setEditSeason] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     fetchTasks();
@@ -39,22 +48,31 @@ export const FieldDetailScreen = ({ route, navigation }: any) => {
 
   const { t } = useLanguageStore();
 
-  const handleAddTask = async () => {
-    if (!taskTitle) return;
-    setLoading(true);
+
+  const openEditModal = () => {
+    setEditName(field.name || '');
+    setEditVariety(field.variety || '');
+    setEditSeason(field.season || '');
+    setEditNotes(field.notes || '');
+    setEditModalVisible(true);
+  };
+
+  const handleUpdateField = async () => {
+    if (!editName) return;
+    setUpdating(true);
     try {
-      await tasksRepository.create({
-        field_id: fieldId,
-        title: taskTitle,
-        priority,
-        status: 'pending',
+      await fieldsRepository.update(fieldId, {
+        name: editName,
+        variety: editVariety,
+        season: editSeason,
+        notes: editNotes,
       });
-      setModalVisible(false);
-      setTaskTitle('');
+      setEditModalVisible(false);
     } catch (err) {
       console.error(err);
+      Alert.alert(t('error') || 'Error', t('error_saving_field') || 'Error saving field');
     }
-    setLoading(false);
+    setUpdating(false);
   };
 
   const handleDeleteField = () => {
@@ -72,7 +90,7 @@ export const FieldDetailScreen = ({ route, navigation }: any) => {
                navigation.goBack();
              } catch (err) {
                console.error(err);
-               Alert.alert('Error deleting field');
+               Alert.alert(t('error') || 'Error', 'Error deleting field');
              }
           }
         }
@@ -156,7 +174,7 @@ export const FieldDetailScreen = ({ route, navigation }: any) => {
         <View style={styles.section}>
           <View style={styles.headerRow}>
             <Text style={styles.sectionHeader}>{t('details').toUpperCase()}</Text>
-            <IconButton icon="square-edit-outline" size={20} onPress={() => {}} />
+            <IconButton icon="square-edit-outline" size={20} onPress={openEditModal} />
           </View>
           
           <View style={styles.table}>
@@ -173,15 +191,19 @@ export const FieldDetailScreen = ({ route, navigation }: any) => {
               <View style={styles.tableValueCell}><Text style={styles.tableValue}>{formatHectares(field.area_hectares)} ha</Text></View>
             </View>
             <View style={styles.tableRow}>
-              <View style={styles.tableLabelCell}><Text style={styles.tableLabel}>VARIETY</Text></View>
+              <View style={styles.tableLabelCell}><Text style={styles.tableLabel}>{t('variety').toUpperCase()}</Text></View>
               <View style={styles.tableValueCell}><Text style={styles.tableValue}>{field.variety || 'Standard'}</Text></View>
             </View>
             <View style={styles.tableRow}>
-              <View style={styles.tableLabelCell}><Text style={styles.tableLabel}>SEASON</Text></View>
-              <View style={styles.tableValueCell}><Text style={styles.tableValue}>{field.season || '2024'}</Text></View>
+              <View style={styles.tableLabelCell}><Text style={styles.tableLabel}>{t('season').toUpperCase()}</Text></View>
+              <View style={styles.tableValueCell}><Text style={styles.tableValue}>{field.season || '—'}</Text></View>
+            </View>
+            <View style={styles.tableRow}>
+              <View style={styles.tableLabelCell}><Text style={styles.tableLabel}>{t('notes').toUpperCase()}</Text></View>
+              <View style={styles.tableValueCell}><Text style={styles.tableValue}>{field.notes || '—'}</Text></View>
             </View>
             <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
-              <View style={styles.tableLabelCell}><Text style={styles.tableLabel}>CREATED</Text></View>
+              <View style={styles.tableLabelCell}><Text style={styles.tableLabel}>{t('created').toUpperCase()}</Text></View>
               <View style={styles.tableValueCell}><Text style={styles.tableValue}>{new Date(field.created_at).toLocaleDateString()}</Text></View>
             </View>
           </View>
@@ -190,30 +212,39 @@ export const FieldDetailScreen = ({ route, navigation }: any) => {
         {/* Linking / Parent / Child Section */}
         {field.field_type === 'sector' && childBlocks.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionHeader}>BLOCKS</Text>
-            {childBlocks.map(block => (
-              <View key={block.id} style={styles.listItem}>
-                <Text 
-                  style={styles.listItemText}
+            <Text style={styles.sectionHeader}>{t('blocks_caps')}</Text>
+            <View style={styles.blocksContainer}>
+              {childBlocks.map(block => (
+                <TouchableOpacity 
+                  key={block.id} 
+                  style={styles.wideBlockCard}
                   onPress={() => navigation.push('FieldDetail', { fieldId: block.id })}
                 >
-                  {block.name} — {formatHectares(block.area_hectares)} ha
-                </Text>
-                <IconButton icon="chevron-right" size={20} />
-              </View>
-            ))}
+                  <View style={styles.blockIconBox}>
+                    <Text style={styles.blockIconText}>
+                      {block.name.substring(0, 1).toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={styles.blockInfo}>
+                    <Text style={styles.blockCardTitle} numberOfLines={1}>{block.name}</Text>
+                    <Text style={styles.blockCardArea}>{formatHectares(block.area_hectares)} ha</Text>
+                  </View>
+                  <IconButton icon="chevron-right" size={20} iconColor="#CCC" />
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
         )}
 
         {field.field_type === 'block' && field.parent_id && (
            <View style={styles.section}>
-             <Text style={styles.sectionHeader}>LOCATION</Text>
+             <Text style={styles.sectionHeader}>{t('location_caps')}</Text>
              <View style={styles.listItem}>
                 <Text 
                   style={styles.listItemText}
                   onPress={() => navigation.push('FieldDetail', { fieldId: field.parent_id })}
                 >
-                  Belongs to {fields.find(f => f.id === field.parent_id)?.name || 'Parent Sector'}
+                  {t('belongs_to')} {fields.find(f => f.id === field.parent_id)?.name || t('sector')}
                 </Text>
                 <IconButton icon="arrow-up" size={20} />
              </View>
@@ -225,30 +256,40 @@ export const FieldDetailScreen = ({ route, navigation }: any) => {
         {/* Resources */}
         <View style={styles.section}>
           <View style={styles.headerRow}>
-            <Text style={styles.sectionHeader}>RESOURCES</Text>
-            <Button compact labelStyle={styles.viewAllLabel} onPress={() => navigation.navigate('Resources', { screen: 'ResourcesField', params: { fieldId } })}>
-              VIEW ALL
+            <Text style={styles.sectionHeader}>{t('resources_caps')}</Text>
+            <Button 
+              compact 
+              labelStyle={styles.viewAllLabel} 
+              onPress={() => navigation.navigate('Resources', { screen: 'ResourcesField', params: { fieldId: field.id } })}
+            >
+              {t('manage_caps')}
             </Button>
           </View>
-          {fieldResourcesData.slice(0, 3).map((res) => (
-            <ResourceCard 
-              key={res.id} 
-              resource={res} 
-              compact 
-              onPress={() => navigation.navigate('Resources', { 
-                screen: 'ResourceDetail', 
-                params: { fieldId, resourceTypeId: res.resource_type_id, fieldName: field.name, resourceName: res.resource_type.name } 
-              })}
-            />
-          ))}
-          {fieldResourcesData.length === 0 && <Text style={styles.emptyText}>No active resources.</Text>}
+          <TouchableOpacity 
+            activeOpacity={0.7} 
+            onPress={() => navigation.navigate('Resources', { screen: 'ResourcesField', params: { fieldId: field.id } })}
+            style={styles.resourcesPreview}
+          >
+            {fieldResourcesData.slice(0, 3).map((res) => (
+              <ResourceCard 
+                key={res.id} 
+                resource={res} 
+                compact 
+                onPress={() => navigation.navigate('Resources', { screen: 'ResourcesField', params: { fieldId: field.id } })}
+              />
+            ))}
+            {fieldResourcesData.length === 0 && <Text style={styles.emptyText}>{t('no_active_resources')}</Text>}
+            {fieldResourcesData.length > 3 && (
+              <Text style={styles.moreText}>+ {fieldResourcesData.length - 3} {t('resources_caps').toLowerCase()}</Text>
+            )}
+          </TouchableOpacity>
         </View>
 
         <Divider style={styles.sectionDivider} />
 
         {/* Tasks */}
         <View style={styles.section}>
-          <Text style={styles.sectionHeader}>RECENT TASKS</Text>
+          <Text style={styles.sectionHeader}>{t('recent_tasks').toUpperCase()}</Text>
           {fieldTasks.map((task) => (
             <TaskCard
               key={task.id}
@@ -260,7 +301,7 @@ export const FieldDetailScreen = ({ route, navigation }: any) => {
               }}
             />
           ))}
-          {fieldTasks.length === 0 && <Text style={styles.emptyText}>No pending tasks.</Text>}
+          {fieldTasks.length === 0 && <Text style={styles.emptyText}>{t('no_pending_tasks')}</Text>}
         </View>
       </ScrollView>
 
@@ -271,47 +312,85 @@ export const FieldDetailScreen = ({ route, navigation }: any) => {
         color="#FFF"
       />
 
+      <AddTaskModal
+        visible={modalVisible}
+        onDismiss={() => setModalVisible(false)}
+        initialFieldId={fieldId}
+        onSuccess={() => fetchTasks()}
+      />
+
+
+      <AddTransactionModal
+        visible={txModalVisible}
+        onDismiss={() => {
+          setTxModalVisible(false);
+          setSelectedResTypeId(undefined);
+        }}
+        initialFieldId={fieldId}
+        initialResourceTypeId={selectedResTypeId}
+      />
+
       <Portal>
         <Modal
-          visible={modalVisible}
-          onDismiss={() => setModalVisible(false)}
+          visible={editModalVisible}
+          onDismiss={() => setEditModalVisible(false)}
           contentContainerStyle={styles.modal}
         >
-          <Title style={styles.modalTitle}>Add Task</Title>
-          <TextInput
-            label="Task Title"
-            value={taskTitle}
-            onChangeText={setTaskTitle}
-            mode="outlined"
-            activeOutlineColor="#000"
-            style={styles.input}
-          />
-          <Text style={styles.label}>PRIORITY</Text>
-          <RadioButton.Group onValueChange={value => setPriority(value as any)} value={priority}>
-            <View style={styles.radioRow}>
-              <View style={styles.radioItem}>
-                <RadioButton value="low" color="#000" />
-                <Text style={styles.radioLabel}>Low</Text>
-              </View>
-              <View style={styles.radioItem}>
-                <RadioButton value="medium" color="#000" />
-                <Text style={styles.radioLabel}>Med</Text>
-              </View>
-              <View style={styles.radioItem}>
-                <RadioButton value="high" color="#000" />
-                <Text style={styles.radioLabel}>High</Text>
-              </View>
-            </View>
-          </RadioButton.Group>
-
-          <Button
-            mode="contained"
-            onPress={handleAddTask}
-            loading={loading}
-            style={styles.saveBtn}
-          >
-            Add Task
-          </Button>
+          <View style={styles.modalHeader}>
+            <Title style={styles.modalTitle}>{t('edit_field') || 'Edit Field'}</Title>
+            <IconButton 
+              icon="close" 
+              size={20} 
+              onPress={() => setEditModalVisible(false)} 
+              style={styles.modalClose}
+            />
+          </View>
+          <ScrollView>
+            <TextInput
+              label={t('name')}
+              value={editName}
+              onChangeText={setEditName}
+              mode="outlined"
+              activeOutlineColor="#000"
+              style={styles.input}
+            />
+            <TextInput
+              label={t('variety')}
+              value={editVariety}
+              onChangeText={setEditVariety}
+              mode="outlined"
+              activeOutlineColor="#000"
+              style={styles.input}
+            />
+            <TextInput
+              label={t('season')}
+              value={editSeason}
+              onChangeText={setEditSeason}
+              mode="outlined"
+              keyboardType="numeric"
+              activeOutlineColor="#000"
+              style={styles.input}
+            />
+            <TextInput
+              label={t('notes')}
+              value={editNotes}
+              onChangeText={setEditNotes}
+              mode="outlined"
+              multiline
+              numberOfLines={3}
+              activeOutlineColor="#000"
+              style={styles.input}
+            />
+            <Button
+              mode="contained"
+              onPress={handleUpdateField}
+              loading={updating}
+              disabled={updating}
+              style={styles.saveBtn}
+            >
+              {t('save')}
+            </Button>
+          </ScrollView>
         </Modal>
       </Portal>
     </View>
@@ -418,6 +497,17 @@ const styles = StyleSheet.create({
     color: '#999',
     fontStyle: 'italic',
   },
+  moreText: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 8,
+    letterSpacing: 0.5,
+  },
+  resourcesPreview: {
+    marginTop: 4,
+  },
   sectionDivider: {
     marginHorizontal: 24,
     backgroundColor: '#F0F0F0',
@@ -432,37 +522,104 @@ const styles = StyleSheet.create({
   modal: {
     backgroundColor: 'white',
     padding: 24,
-    margin: 24,
-    borderRadius: 0, // Brutalist style
-    borderWidth: 2,
-    borderColor: '#000',
+    margin: 20,
+    borderRadius: 24,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: '900',
-    marginBottom: 16,
+    fontWeight: 'bold',
+    color: '#000',
+  },
+  modalClose: {
+    margin: -8,
   },
   input: {
     marginBottom: 16,
     backgroundColor: '#FFF',
   },
+  label: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#666',
+    letterSpacing: 1,
+    marginTop: 8,
+  },
   radioRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginVertical: 12,
+    marginVertical: 16,
   },
   radioItem: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   radioLabel: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '600',
     marginLeft: 4,
+    color: '#333',
   },
   saveBtn: {
     marginTop: 16,
     backgroundColor: '#000',
-    borderRadius: 0,
+    borderRadius: 12,
+    paddingVertical: 6,
+  },
+  blocksContainer: {
+    marginTop: 12,
+  },
+  wideBlockCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  blockIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  blockIconText: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  blockInfo: {
+    flex: 1,
+  },
+  blockCardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#000',
+    marginBottom: 2,
+  },
+  blockCardArea: {
+    fontSize: 13,
+    color: '#666',
+    fontWeight: '500',
   },
 });

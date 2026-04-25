@@ -36,8 +36,8 @@ export const SettingsScreen = () => {
         </List.Accordion>
         <Divider />
         <List.Item
-          title="Map Display Units"
-          description="Hectares"
+          title={t('map_units')}
+          description={t('hectares')}
           left={(props) => <List.Icon {...props} icon="tape-measure" />}
           onPress={() => {}}
         />
@@ -50,7 +50,7 @@ export const SettingsScreen = () => {
           textColor="#000"
           style={styles.logoutBtn}
         >
-          Logout
+          {t('logout')}
         </Button>
         <Text style={styles.version}>CottonMap v1.0.0</Text>
       </View>

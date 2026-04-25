@@ -1,35 +1,33 @@
 import React, { useEffect } from 'react';
-import { View, StyleSheet, Text } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 
 interface Props {
-  current: number;
-  maximum: number;
-  unit: string;
+  percentage: number;
+  color?: string;
   height?: number;
 }
 
-export const StockProgressBar: React.FC<Props> = ({ current, maximum, unit, height = 8 }) => {
-  const percentage = Math.min(Math.max(current / maximum, 0), 1);
+export const StockProgressBar: React.FC<Props> = ({ percentage, color = '#000', height = 4 }) => {
+  const normPercentage = Math.min(Math.max(percentage, 0), 100);
   const progress = useSharedValue(0);
 
   useEffect(() => {
-    progress.value = withSpring(percentage, { damping: 15 });
-  }, [percentage]);
+    progress.value = withSpring(normPercentage / 100, { 
+      damping: 20,
+      stiffness: 90 
+    });
+  }, [normPercentage]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     width: `${progress.value * 100}%`,
-    backgroundColor: progress.value > 0.5 ? '#4CAF50' : progress.value > 0.2 ? '#FF9800' : '#F44336',
+    backgroundColor: color,
   }));
 
   return (
-    <View style={styles.container}>
-      <View style={[styles.background, { height }]}>
+    <View style={[styles.container, { height }]}>
+      <View style={styles.background}>
         <Animated.View style={[styles.fill, animatedStyle]} />
-      </View>
-      <View style={styles.labelRow}>
-        <Text style={styles.percentageText}>{Math.round(percentage * 100)}%</Text>
-        <Text style={styles.balanceText}>{current.toFixed(1)} / {maximum} {unit}</Text>
       </View>
     </View>
   );
@@ -41,27 +39,13 @@ const styles = StyleSheet.create({
     marginVertical: 4,
   },
   background: {
-    backgroundColor: '#EEEEEE',
-    borderRadius: 4,
+    flex: 1,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 10,
     overflow: 'hidden',
-    width: '100%',
   },
   fill: {
     height: '100%',
-    borderRadius: 4,
-  },
-  labelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 4,
-  },
-  percentageText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#666',
-  },
-  balanceText: {
-    fontSize: 10,
-    color: '#666',
+    borderRadius: 10,
   },
 });

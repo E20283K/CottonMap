@@ -25,6 +25,25 @@ export const resourcesRepository = {
     return data;
   },
 
+  async updateResourceType(id: string, updates: Partial<any>) {
+    const { data, error } = await supabase
+      .from('resource_types')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteResourceType(id: string) {
+    const { error } = await supabase
+      .from('resource_types')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+  },
+
   // Field Inventory
   async getFieldResources(fieldId: string) {
     const { data, error } = await supabase
