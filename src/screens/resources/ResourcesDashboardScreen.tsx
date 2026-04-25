@@ -1,11 +1,13 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, FlatList, TouchableOpacity } from 'react-native';
-import { Text, Title, Button, IconButton, FAB, Surface } from 'react-native-paper';
+import { useIsFocused } from '@react-navigation/native';
+import { Text, Title, Button, IconButton, FAB, Surface, Portal, Modal } from 'react-native-paper';
 import { useResourcesStore } from '../../store/useResourcesStore';
 import { useFieldsStore } from '../../store/useFieldsStore';
 import { ResourceCard } from '../../components/resources/ResourceCard';
 import { AddTransactionModal } from '../../components/resources/AddTransactionModal';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { FocusAwareStatusBar } from '../../components/Common/FocusAwareStatusBar';
 import { useLanguageStore } from '../../store/useLanguageStore';
 
 export const ResourcesDashboardScreen = ({ navigation }: any) => {
@@ -13,6 +15,9 @@ export const ResourcesDashboardScreen = ({ navigation }: any) => {
   const { fields, fetchFields } = useFieldsStore();
   const { t } = useLanguageStore();
   const [modalVisible, setModalVisible] = useState(false);
+  const [typeSelectionVisible, setTypeSelectionVisible] = useState(false);
+  const isFocused = useIsFocused();
+  const [selectedType, setSelectedType] = useState<'incoming' | 'outgoing'>('incoming');
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
@@ -71,6 +76,7 @@ export const ResourcesDashboardScreen = ({ navigation }: any) => {
 
   return (
     <View style={styles.container}>
+      <FocusAwareStatusBar style="dark" />
 
       <ScrollView 
         style={styles.scroll}
@@ -141,18 +147,64 @@ export const ResourcesDashboardScreen = ({ navigation }: any) => {
         <View style={{ height: 120 }} />
       </ScrollView>
 
-      <FAB
-        icon="plus"
-        label={t('record_transaction')}
-        style={styles.fab}
-        onPress={() => setModalVisible(true)}
-        color="#FFF"
-        labelStyle={styles.fabLabel}
-      />
+      {isFocused && (
+        <FAB
+          icon="plus"
+          style={styles.fab}
+          onPress={() => setTypeSelectionVisible(true)}
+          color="#FFF"
+        />
+      )}
+
+      <Portal>
+        <Modal
+          visible={typeSelectionVisible}
+          onDismiss={() => setTypeSelectionVisible(false)}
+          contentContainerStyle={styles.typeModal}
+        >
+          <Title style={styles.typeTitle}>{t('record_event')}</Title>
+          <Text style={styles.typeSubtitle}>{t('inventory_transaction')}</Text>
+          
+          <TouchableOpacity 
+            style={styles.typeOption} 
+            onPress={() => {
+              setSelectedType('incoming');
+              setTypeSelectionVisible(false);
+              setModalVisible(true);
+            }}
+          >
+            <View style={styles.typeIconBox}>
+              <MaterialCommunityIcons name="arrow-down-bold" size={24} color="#000" />
+            </View>
+            <View>
+              <Text style={styles.typeOptionLabel}>{t('stock_in')}</Text>
+              <Text style={styles.typeOptionSub}>{t('incoming_inventory') || 'Add resources to field'}</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.typeOption} 
+            onPress={() => {
+              setSelectedType('outgoing');
+              setTypeSelectionVisible(false);
+              setModalVisible(true);
+            }}
+          >
+            <View style={styles.typeIconBox}>
+              <MaterialCommunityIcons name="arrow-up-bold" size={24} color="#000" />
+            </View>
+            <View>
+              <Text style={styles.typeOptionLabel}>{t('usage')}</Text>
+              <Text style={styles.typeOptionSub}>{t('usage_inventory') || 'Record resource use'}</Text>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+      </Portal>
 
       <AddTransactionModal 
         visible={modalVisible} 
         onDismiss={() => setModalVisible(false)} 
+        initialType={selectedType}
       />
     </View>
   );
@@ -282,16 +334,56 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    margin: 24,
-    right: 0,
-    bottom: 0,
+    margin: 16,
+    right: 16,
+    bottom: 16,
     backgroundColor: '#000',
     borderRadius: 16,
-    elevation: 8,
   },
-  fabLabel: {
-    fontSize: 12,
+  typeModal: {
+    backgroundColor: '#FFF',
+    padding: 24,
+    margin: 24,
+    borderRadius: 24,
+  },
+  typeTitle: {
+    fontSize: 20,
     fontWeight: '900',
+    color: '#000',
+    marginBottom: 4,
+  },
+  typeSubtitle: {
+    fontSize: 12,
+    color: '#999',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    marginBottom: 24,
     letterSpacing: 1,
+  },
+  typeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F5',
+  },
+  typeIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#F9F9F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  typeOptionLabel: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#000',
+  },
+  typeOptionSub: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 2,
   },
 });

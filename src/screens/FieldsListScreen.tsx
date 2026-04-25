@@ -6,6 +6,7 @@ import { useFieldsStore } from '../store/useFieldsStore';
 import { useLanguageStore } from '../store/useLanguageStore';
 import { FieldCard } from '../components/FieldCard';
 import { Colors } from '../utils/colorPalette';
+import { FocusAwareStatusBar } from '../components/Common/FocusAwareStatusBar';
 
 export const FieldsListScreen = ({ navigation }: any) => {
   const { fields, loading, fetchFields } = useFieldsStore();
@@ -45,6 +46,7 @@ export const FieldsListScreen = ({ navigation }: any) => {
 
   return (
     <View style={styles.container}>
+      <FocusAwareStatusBar style="dark" />
       <ScrollView 
         contentContainerStyle={styles.listContent}
         refreshControl={

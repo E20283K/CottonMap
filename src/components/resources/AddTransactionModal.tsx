@@ -22,19 +22,21 @@ interface Props {
   onDismiss: () => void;
   initialFieldId?: string;
   initialResourceTypeId?: string;
+  initialType?: 'incoming' | 'outgoing';
 }
 
 export const AddTransactionModal: React.FC<Props> = ({ 
   visible, 
   onDismiss, 
   initialFieldId, 
-  initialResourceTypeId 
+  initialResourceTypeId,
+  initialType
 }) => {
   const { resourceTypes, addTransaction } = useResourcesStore();
   const { t } = useLanguageStore();
   const { fields } = useFieldsStore();
 
-  const [type, setType] = useState<'incoming' | 'outgoing'>('incoming');
+  const [type, setType] = useState<'incoming' | 'outgoing'>(initialType || 'incoming');
   const [selectedSectorId, setSelectedSectorId] = useState<string | undefined>();
   const [fieldId, setFieldId] = useState(initialFieldId || '');
   const [resourceTypeId, setResourceTypeId] = useState(initialResourceTypeId || '');
@@ -59,7 +61,8 @@ export const AddTransactionModal: React.FC<Props> = ({
       }
     }
     if (initialResourceTypeId) setResourceTypeId(initialResourceTypeId);
-  }, [initialFieldId, initialResourceTypeId, fields]);
+    if (initialType && visible) setType(initialType);
+  }, [initialFieldId, initialResourceTypeId, initialType, fields, visible]);
 
   const handleSave = async () => {
     if (!fieldId || !resourceTypeId || !quantity) {

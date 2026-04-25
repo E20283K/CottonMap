@@ -7,6 +7,7 @@ import { tasksRepository } from '../database/tasksRepository';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLanguageStore } from '../store/useLanguageStore';
 import { AddTaskModal } from '../components/AddTaskModal';
+import { FocusAwareStatusBar } from '../components/Common/FocusAwareStatusBar';
 
 export const TasksScreen = ({ navigation }: any) => {
   const { tasks, loading, fetchTasks } = useTasksStore();
@@ -27,6 +28,7 @@ export const TasksScreen = ({ navigation }: any) => {
 
   return (
     <View style={styles.container}>
+      <FocusAwareStatusBar style="dark" />
       {tasks.length === 0 ? (
         <View style={styles.emptyContainer}>
           <MaterialCommunityIcons name="clipboard-check-outline" size={64} color="#EEE" />

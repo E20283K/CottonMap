@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { StyleSheet, View, Dimensions, Text as NativeText, ScrollView, SafeAreaView } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { FocusAwareStatusBar } from '../components/Common/FocusAwareStatusBar';
 import MapView, { Marker, Polygon, PROVIDER_GOOGLE, MapType } from 'react-native-maps';
 import { IconButton, FAB, Portal, Modal, Title, Button, TextInput, SegmentedButtons, RadioButton, Text, Chip } from 'react-native-paper';
 import { useLocation } from '../hooks/useLocation';
@@ -250,7 +250,7 @@ export const MapScreen = ({ navigation, route }: any) => {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
+      <FocusAwareStatusBar style={mapType === 'standard' ? 'dark' : 'light'} />
       {!isEditorActive && (
         <SafeAreaView style={styles.searchContainer}>
           <FieldSearch 
