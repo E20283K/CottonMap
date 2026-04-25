@@ -1,4 +1,3 @@
-import 'react-native-gesture-handler';
 import 'react-native-url-polyfill/auto';
 import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
@@ -23,8 +22,11 @@ const theme = {
   },
 };
 
+import { useSeedResources } from './src/hooks/useSeedResources';
+
 export default function App() {
   const { session, setSession, loading } = useAuthStore();
+  useSeedResources(session);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {

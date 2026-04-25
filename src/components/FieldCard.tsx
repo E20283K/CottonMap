@@ -1,9 +1,10 @@
 import React from 'react';
-import { Card, Title, Paragraph, Badge } from 'react-native-paper';
+import { Card, Title, Paragraph, Badge, Text } from 'react-native-paper';
 import { StyleSheet, View } from 'react-native';
 import { Field } from '../types';
 import { formatHectares } from '../utils/geoCalculations';
 import { Colors } from '../utils/colorPalette';
+import { useFieldsStore } from '../store/useFieldsStore';
 
 interface Props {
   field: Field;
@@ -11,17 +12,34 @@ interface Props {
 }
 
 export const FieldCard: React.FC<Props> = ({ field, onPress }) => {
+  const fields = useFieldsStore((state) => state.fields);
+  const parentSector = field.parent_id 
+    ? fields.find(f => f.id === field.parent_id) 
+    : null;
+
   return (
     <Card style={styles.card} onPress={onPress}>
       <Card.Content>
         <View style={styles.header}>
-          <Title style={styles.title}>{field.name}</Title>
+          <View style={styles.titleContainer}>
+            <Badge 
+              style={[
+                styles.typeBadge, 
+                { backgroundColor: field.field_type === 'sector' ? Colors.field.sector : Colors.field.block }
+              ]}
+            >
+              {field.field_type.toUpperCase()}
+            </Badge>
+            <Title style={styles.title}>{field.label || field.name}</Title>
+          </View>
           <Badge style={[styles.badge, { backgroundColor: field.color }]}>
             {formatHectares(field.area_hectares)} ha
           </Badge>
         </View>
-        <Paragraph>Variety: {field.variety || 'N/A'}</Paragraph>
-        <Paragraph>Season: {field.season || 'N/A'}</Paragraph>
+        {parentSector && (
+          <Paragraph style={styles.parentText}>↳ Inside Sector: {parentSector.name}</Paragraph>
+        )}
+        <Paragraph>Variety: {field.variety || 'N/A'} • Season: {field.season || 'N/A'}</Paragraph>
       </Card.Content>
     </Card>
   );
@@ -41,6 +59,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  typeBadge: {
+    marginRight: 8,
+    alignSelf: 'center',
+    paddingHorizontal: 6,
+  },
   title: {
     color: Colors.primary,
     fontWeight: 'bold',
@@ -51,4 +78,10 @@ const styles = StyleSheet.create({
     height: 24,
     color: '#FFF',
   },
+  parentText: {
+    color: '#666',
+    fontStyle: 'italic',
+    marginBottom: 4,
+  },
 });
+

@@ -23,3 +23,22 @@ export const calculateArea = (coordinates: LatLng[]): number => {
 export const formatHectares = (hectares: number): string => {
   return hectares.toFixed(2);
 };
+
+export function computeCentroid(
+  vertices: { latitude: number; longitude: number }[]
+): { latitude: number; longitude: number } {
+  if (vertices.length === 0) return { latitude: 0, longitude: 0 };
+  
+  const coords = vertices.map(v => [v.longitude, v.latitude]);
+  // Turf polygon requires at least 4 coordinates (last one same as first)
+  if (coords.length > 0 && (coords[0][0] !== coords[coords.length - 1][0] || coords[0][1] !== coords[coords.length - 1][1])) {
+    coords.push(coords[0]);
+  }
+  
+  const polygon = turf.polygon([coords]);
+  const center  = turf.centroid(polygon);
+  return {
+    latitude:  center.geometry.coordinates[1],
+    longitude: center.geometry.coordinates[0],
+  };
+}

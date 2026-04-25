@@ -7,12 +7,17 @@ export interface Field {
   id: string;
   user_id: string;
   name: string;
+  label?: string;
+  field_type: 'sector' | 'block';
+  parent_id?: string | null;
   polygon_json: LatLng[];
   area_hectares: number;
   variety?: string;
   season?: string;
   notes?: string;
   color: string;
+  centroid_lat?: number;
+  centroid_lng?: number;
   created_at: string;
   updated_at: string;
 }

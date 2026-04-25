@@ -2,31 +2,38 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Button, Title, Avatar, List, Divider, Text } from 'react-native-paper';
 import { useAuthStore } from '../store/useAuthStore';
+import { useLanguageStore } from '../store/useLanguageStore';
 import { Colors } from '../utils/colorPalette';
 
 export const SettingsScreen = () => {
   const { user, signOut } = useAuthStore();
+  const { language, setLanguage, t } = useLanguageStore();
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Avatar.Icon size={80} icon="account" backgroundColor={Colors.primary} />
+        <Avatar.Icon size={80} icon="account" backgroundColor={Colors.onSurface} color="#FFF" />
         <Title style={styles.userName}>{user?.email}</Title>
       </View>
 
       <List.Section style={styles.section}>
-        <List.Subheader>App Settings</List.Subheader>
-        <List.Item
-          title="Profile Information"
-          left={(props) => <List.Icon {...props} icon="account-details" />}
-          onPress={() => {}}
-        />
-        <Divider />
-        <List.Item
-          title="Notifications"
-          left={(props) => <List.Icon {...props} icon="bell" />}
-          onPress={() => {}}
-        />
+        <List.Subheader>{t('settings')}</List.Subheader>
+        <List.Accordion
+          title={t('language')}
+          description={language === 'en' ? t('english') : t('uzbek')}
+          left={(props) => <List.Icon {...props} icon="translate" />}
+        >
+          <List.Item 
+            title={t('english')} 
+            onPress={() => setLanguage('en')}
+            right={() => language === 'en' ? <List.Icon icon="check" /> : null}
+          />
+          <List.Item 
+            title={t('uzbek')} 
+            onPress={() => setLanguage('uz')}
+            right={() => language === 'uz' ? <List.Icon icon="check" /> : null}
+          />
+        </List.Accordion>
         <Divider />
         <List.Item
           title="Map Display Units"
@@ -40,7 +47,7 @@ export const SettingsScreen = () => {
         <Button
           mode="outlined"
           onPress={signOut}
-          textColor={Colors.error}
+          textColor="#000"
           style={styles.logoutBtn}
         >
           Logout
