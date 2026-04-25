@@ -63,7 +63,15 @@ export const ResourceDetailScreen = ({ route, navigation }: any) => {
       <View style={styles.topHeader}>
         <View style={styles.titleInfo}>
           <Title style={styles.title}>{resourceName}</Title>
-          <Text style={styles.subTitle}>{fieldName}</Text>
+          <View style={styles.subHeaderRow}>
+            <Text style={styles.subTitle}>{fieldName}</Text>
+            {resource?.low_stock_alert && (
+              <View style={styles.lowStockPill}>
+                <MaterialCommunityIcons name="alert-circle" size={10} color="#000" />
+                <Text style={styles.lowStockText}>LOW STOCK</Text>
+              </View>
+            )}
+          </View>
         </View>
         <Surface style={styles.balanceBadge} elevation={1}>
           <Text style={styles.balanceValue}>{resource?.current_balance || 0}</Text>
@@ -152,6 +160,28 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
+  },
+  subHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  lowStockPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    marginLeft: 8,
+    borderWidth: 1,
+    borderColor: '#EEE',
+  },
+  lowStockText: {
+    fontSize: 8,
+    fontWeight: '900',
+    color: '#000',
+    marginLeft: 4,
+    letterSpacing: 0.5,
   },
   subTitle: {
     color: '#666',

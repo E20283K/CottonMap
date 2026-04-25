@@ -131,8 +131,26 @@ export const AddTransactionModal: React.FC<Props> = ({
           value={type}
           onValueChange={v => setType(v as any)}
           buttons={[
-            { value: 'incoming', label: t('stock_in'), checkedColor: '#000', labelStyle: styles.segLabel },
-            { value: 'outgoing', label: t('usage'), checkedColor: '#000', labelStyle: styles.segLabel },
+            { 
+              value: 'incoming', 
+              label: t('stock_in'), 
+              checkedColor: '#FFF',
+              labelStyle: styles.segLabel,
+              style: { 
+                backgroundColor: type === 'incoming' ? '#4CAF50' : '#FFF',
+                borderColor: type === 'incoming' ? '#4CAF50' : '#E8F5E9'
+              }
+            },
+            { 
+              value: 'outgoing', 
+              label: t('usage'), 
+              checkedColor: '#FFF',
+              labelStyle: styles.segLabel,
+              style: { 
+                backgroundColor: type === 'outgoing' ? '#F44336' : '#FFF',
+                borderColor: type === 'outgoing' ? '#F44336' : '#FFEBEE'
+              }
+            },
           ]}
           style={styles.segmented}
           density="medium"
@@ -295,7 +313,7 @@ export const AddTransactionModal: React.FC<Props> = ({
             onPress={handleSave} 
             loading={submitting}
             disabled={submitting}
-            style={styles.saveBtn}
+            style={[styles.saveBtn, { backgroundColor: type === 'incoming' ? '#4CAF50' : '#F44336' }]}
             contentStyle={styles.saveBtnContent}
           >
             {type === 'incoming' ? t('save_transaction') : t('record_usage')}

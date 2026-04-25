@@ -4,12 +4,14 @@ import { TextInput, Button, Title, Text, HelperText } from 'react-native-paper';
 import { supabase } from '../../lib/supabase';
 import { Colors } from '../../utils/colorPalette';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useLanguageStore } from '../../store/useLanguageStore';
 
 export const LoginScreen = ({ navigation }: any) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useLanguageStore();
   const setSession = useAuthStore((state) => state.setSession);
 
   const handleLogin = async () => {
@@ -72,7 +74,7 @@ export const LoginScreen = ({ navigation }: any) => {
           style={styles.button}
           contentStyle={styles.buttonContent}
         >
-          Login
+          {loading ? t('logging_in') : t('login')}
         </Button>
 
         <Button

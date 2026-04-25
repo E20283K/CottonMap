@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Alert } from 'react-native';
 import { Avatar, Text, Divider } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
@@ -25,8 +25,21 @@ export const SettingsScreen = () => {
   };
 
   const handleLogout = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    signOut();
+    Alert.alert(
+      t('logout'),
+      t('confirm_logout') || 'Are you sure you want to log out?',
+      [
+        { text: t('cancel'), style: 'cancel' },
+        { 
+          text: t('logout'), 
+          style: 'destructive',
+          onPress: () => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            signOut();
+          }
+        }
+      ]
+    );
   };
 
   const SettingItem = ({ icon, title, description, onPress, rightContent, danger }: any) => (

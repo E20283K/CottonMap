@@ -173,11 +173,11 @@ export const ResourcesDashboardScreen = ({ navigation }: any) => {
               setModalVisible(true);
             }}
           >
-            <View style={styles.typeIconBox}>
-              <MaterialCommunityIcons name="arrow-down-bold" size={24} color="#000" />
+            <View style={[styles.typeIconBox, { backgroundColor: '#E8F5E9' }]}>
+              <MaterialCommunityIcons name="arrow-down-bold" size={24} color="#4CAF50" />
             </View>
             <View>
-              <Text style={styles.typeOptionLabel}>{t('stock_in')}</Text>
+              <Text style={[styles.typeOptionLabel, { color: '#2E7D32' }]}>{t('stock_in')}</Text>
               <Text style={styles.typeOptionSub}>{t('incoming_inventory') || 'Add resources to field'}</Text>
             </View>
           </TouchableOpacity>
@@ -190,11 +190,11 @@ export const ResourcesDashboardScreen = ({ navigation }: any) => {
               setModalVisible(true);
             }}
           >
-            <View style={styles.typeIconBox}>
-              <MaterialCommunityIcons name="arrow-up-bold" size={24} color="#000" />
+            <View style={[styles.typeIconBox, { backgroundColor: '#FFEBEE' }]}>
+              <MaterialCommunityIcons name="arrow-up-bold" size={24} color="#F44336" />
             </View>
             <View>
-              <Text style={styles.typeOptionLabel}>{t('usage')}</Text>
+              <Text style={[styles.typeOptionLabel, { color: '#C62828' }]}>{t('usage')}</Text>
               <Text style={styles.typeOptionSub}>{t('usage_inventory') || 'Record resource use'}</Text>
             </View>
           </TouchableOpacity>
@@ -221,18 +221,23 @@ const styles = StyleSheet.create({
   alertCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#000',
-    padding: 12,
+    backgroundColor: '#FFF',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
     marginHorizontal: 24,
-    marginTop: 16,
-    borderRadius: 16,
+    marginTop: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F1F3F5',
+    alignSelf: 'flex-start',
   },
   alertText: {
-    color: '#FFF',
+    color: '#000',
     fontWeight: '800',
-    fontSize: 12,
-    marginLeft: 12,
-    letterSpacing: 0.2,
+    fontSize: 10,
+    marginLeft: 8,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
   summaryContainer: {
     marginTop: 20,
